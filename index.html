@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema William - Master Cloud</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background:#f0f2f5; margin:0; padding:15px; }
+    .container { max-width:1200px; margin:auto; }
+    .card { background:#fff; padding:20px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,.1); margin-bottom:20px; }
+    input, button, select { padding:12px; width:100%; margin-bottom:10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; }
+    button { background:#2f80ed; color:#fff; border:none; cursor:pointer; font-weight: bold; }
+    button.danger { background:#eb5757; }
+    button.success { background:#27ae60; }
+    table { width:100%; border-collapse: collapse; margin-top: 10px; background: white; }
+    th, td { padding:10px; border: 1px solid #eee; text-align: center; }
+    th { background: #f8f9fa; font-size: 13px; }
+    .hidden { display:none; }
+    .tabs { display:flex; gap:8px; margin-bottom:20px; overflow-x: auto; }
+    .tab { padding:12px; background:#ddd; border-radius:8px; cursor:pointer; flex: 1; text-align: center; white-space: nowrap; }
+    .tab.active { background:#2f80ed; color:#fff; }
+    .input-edit { width: 65px; text-align: center; border: 1px solid #2f80ed; padding: 5px; border-radius: 4px; font-weight: bold; background: #fff; }
+    .final-col { background:#e8f4fd; font-weight:bold; color: #2f80ed; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<div class="card" id="loginBox" style="max-width: 400px; margin: 50px auto;">
+  <h1 style="text-align:center">🔐 Sistema Master</h1>
+  <input type="text" id="usuarioInput" placeholder="Usuário" />
+  <input type="password" id="senhaInput" placeholder="Senha" />
+  <button onclick="login()">Entrar</button>
+</div>
+
+<div id="sistema" class="hidden">
+  <div class="card" style="display:flex; justify-content: space-between; align-items: center;">
+    <h2 id="tituloHeader" style="margin:0; font-size: 18px;"></h2>
+    <button class="danger" onclick="location.reload()" style="width: auto;">Sair</button>
+  </div>
+
+  <div id="abasAdmin" class="tabs hidden">
+    <div class="tab active" onclick="trocarAbaAdmin('visao', this)">👁️ Painel Geral</div>
+    <div class="tab" onclick="trocarAbaAdmin('adicionar', this)">➕ Enviar Produto</div>
+    <div class="tab" onclick="trocarAbaAdmin('usuarios', this)">👥 Gerenciar Logins</div>
+    <div class="tab" onclick="trocarAbaAdmin('relatorio', this)">📊 Configurações</div>
+  </div>
+
+  <div id="adminUsuariosArea" class="card hidden">
+    <h3>👥 Criar Novos Acessos (Apenas William)</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+        <input id="novoUserNome" placeholder="Usuário (Login)" />
+        <input id="novoUserSenha" placeholder="Senha" />
+        <input id="novoUserLoja" placeholder="Nome da Unidade" />
+    </div>
+    <button class="success" onclick="cadastrarUsuario()">+ Cadastrar Acesso</button>
+    <hr>
+    <h4>📋 Logins e Senhas Cadastrados:</h4>
+    <table>
+        <thead>
+            <tr>
+                <th>Usuário</th>
+                <th>Senha</th>
+                <th>Loja/Unidade</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody id="corpoTabelaUsuarios"></tbody>
+    </table>
+  </div>
+
+  <div id="adminArea" class="hidden">
+    <div id="conteudoAdmin"></div>
+  </div>
+
+  <div id="adminAdicionarArea" class="card hidden">
+    <h3>➕ Enviar Produto para Loja</h3>
+    <select id="adminLojaDestino"></select>
+    <select id="adminSetorDestino">
+        <option value="estoque">📦 Estoque</option>
+        <option value="loja">🏪 Loja</option>
+    </select>
+    <input id="adminNomeProd" placeholder="Nome do Produto" />
+    <input id="adminQtdProd" type="number" placeholder="Qtd Inicial" />
+    <button class="success" onclick="addProdutoAdmin()">Confirmar Envio</button>
+  </div>
+
+  <div id="relatorioArea" class="card hidden">
+    <button style="background:#8e44ad" onclick="importarDadosPrime()">📥 Carga Prime (Padrão)</button>
+    <button style="background:#27ae60" onclick="exportarCSV()">📥 Baixar Excel (CSV)</button>
+    <button class="danger" onclick="limparSistema()">⚠️ Resetar Todo Estoque</button>
+  </div>
+
+  <div id="lojaArea" class="hidden">
+    <div class="tabs">
+      <div class="tab active" onclick="trocarAbaLoja('estoque', this)">📦 Estoque</div>
+      <div class="tab" onclick="trocarAbaLoja('loja', this)">🏪 Loja</div>
+    </div>
+    <div class="card">
+      <input id="nomeProd" placeholder="Produto" />
+      <input id="qtdProd" type="number" placeholder="Quantidade" />
+      <button onclick="addProduto()">Salvar Produto</button>
+    </div>
+    <div class="card" style="overflow-x: auto;">
+      <table>
+        <thead><tr><th>Setor</th><th>Item</th><th>Inicial</th><th>Saídas</th><th>FINAL</th><th>Ações</th></tr></thead>
+        <tbody id="listaItenscorpo"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAg8xwk4fJBhhRLBz4W7FUI6svg-qeZ1lw",
+  authDomain: "estoque-ortobom-983c8.firebaseapp.com",
+  databaseURL: "https://estoque-ortobom-983c8-default-rtdb.firebaseio.com",
+  projectId: "estoque-ortobom-983c8",
+  storageBucket: "estoque-ortobom-983c8.firebasestorage.app",
+  appId: "1:559745542824:web:bb584b0da0b7856f90709d"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let usuarioAtual = null;
+let abaAtualLoja = 'estoque';
+
+function login(){
+  const u = document.getElementById('usuarioInput').value.toLowerCase().trim();
+  const s = document.getElementById('senhaInput').value;
+  if(u === 'william' && s === '2019'){
+    usuarioAtual = { tipo: 'admin', nome: 'William Master' };
+    entrar();
+  } else {
+    db.ref('acessos/' + u).once('value', snap => {
+        const d = snap.val();
+        if(d && d.senha === s) {
+            usuarioAtual = { tipo: 'loja', loja: d.loja, nome: d.loja };
+            entrar();
+        } else { alert('Usuário ou senha inválidos!'); }
+    });
+  }
+}
+
+function entrar() {
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('sistema').classList.remove('hidden');
+    document.getElementById('tituloHeader').innerText = usuarioAtual.nome;
+    if(usuarioAtual.tipo === 'admin'){
+      document.getElementById('abasAdmin').classList.remove('hidden');
+      renderAdmin();
+      listarUsuariosAdmin();
+    } else {
+      document.getElementById('lojaArea').classList.remove('hidden');
+      renderLoja();
+    }
+}
+
+// TRAVA DE SEGURANÇA: SÓ WILLIAM CADASTRA
+function cadastrarUsuario() {
+    if(usuarioAtual.nome !== 'William Master') return alert("Acesso negado!");
+    
+    const u = document.getElementById('novoUserNome').value.toLowerCase().trim();
+    const s = document.getElementById('novoUserSenha').value;
+    const l = document.getElementById('novoUserLoja').value;
+    
+    if(u && s && l) {
+        db.ref('acessos/' + u).set({ senha: s, loja: l }).then(() => {
+            alert("Acesso Criado!");
+            document.getElementById('novoUserNome').value = '';
+            document.getElementById('novoUserSenha').value = '';
+            document.getElementById('novoUserLoja').value = '';
+        });
+    } else { alert("Preencha todos os campos!"); }
+}
+
+function listarUsuariosAdmin() {
+    if(usuarioAtual.nome !== 'William Master') return;
+    
+    db.ref('acessos').on('value', snap => {
+        const tabela = document.getElementById('corpoTabelaUsuarios');
+        const selectLojas = document.getElementById('adminLojaDestino');
+        tabela.innerHTML = ''; selectLojas.innerHTML = '';
+        snap.forEach(d => {
+            const data = d.val();
+            tabela.innerHTML += `
+                <tr>
+                    <td><b>${d.key}</b></td>
+                    <td>${data.senha}</td>
+                    <td>${data.loja}</td>
+                    <td><button class="danger" style="padding:5px 10px; width:auto" onclick="removerUsuario('${d.key}')">Excluir</button></td>
+                </tr>`;
+            selectLojas.innerHTML += `<option value="${data.loja}">${data.loja}</option>`;
+        });
+    });
+}
+
+function removerUsuario(id) {
+    if(usuarioAtual.nome === 'William Master') {
+        if(confirm("Deseja apagar este acesso?")) db.ref('acessos/' + id).remove();
+    }
+}
+
+// RESTANTE DAS FUNÇÕES (MESMA LÓGICA DE SEGURANÇA NO UPDATE)
+function atualizarProd(id, campo, valor) {
+    if(usuarioAtual.tipo === 'admin') {
+        db.ref('produtos/' + id).update({ [campo]: Number(valor) });
+    }
+}
+
+function renderAdmin(){
+  db.ref('produtos').on('value', snap => {
+      const container = document.getElementById('conteudoAdmin');
+      container.innerHTML = '';
+      const prods = snap.val() || {};
+      const lojas = [...new Set(Object.values(prods).map(p => p.loja))];
+      
+      lojas.forEach(ln => {
+          let html = `<div class="card"><h3>📍 Unidade: ${ln}</h3><table><thead><tr><th>Setor</th><th>Item</th><th>Inicial</th><th>Saídas</th><th class="final-col">FINAL</th><th>Ação</th></tr></thead><tbody>`;
+          for(let id in prods) {
+              if(prods[id].loja === ln) {
+                  html += `<tr>
+                    <td>${prods[id].tipo}</td>
+                    <td>${prods[id].nome}</td>
+                    <td><input type="number" class="input-edit" value="${prods[id].inicial}" ${usuarioAtual.tipo !== 'admin' ? 'disabled' : ''} onchange="atualizarProd('${id}', 'inicial', this.value)"></td>
+                    <td><input type="number" class="input-edit" value="${prods[id].saidas}" ${usuarioAtual.tipo !== 'admin' ? 'disabled' : ''} onchange="atualizarProd('${id}', 'saidas', this.value)"></td>
+                    <td class="final-col">${prods[id].inicial - prods[id].saidas}</td>
+                    <td><button class="danger" style="padding:5px; width:auto" onclick="db.ref('produtos/${id}').remove()">X</button></td>
+                  </tr>`;
+              }
+          }
+          container.innerHTML += html + `</tbody></table></div>`;
+      });
+  });
+}
+
+function renderLoja(){
+  db.ref('produtos').on('value', snap => {
+      const corpo = document.getElementById('listaItenscorpo');
+      corpo.innerHTML = '';
+      snap.forEach(item => {
+          const p = item.val();
+          if(p.loja === usuarioAtual.loja && p.tipo === abaAtualLoja) {
+              corpo.innerHTML += `<tr><td>${p.tipo.toUpperCase()}</td><td>${p.nome}</td><td>${p.inicial}</td><td>${p.saidas}</td><td class="final-col">${p.inicial-p.saidas}</td><td><button class="success" style="padding:5px 10px; width:auto" onclick="darBaixa('${item.key}', ${p.saidas})">🔻 Saída</button></td></tr>`;
+          }
+      });
+  });
+}
+
+function darBaixa(id, atual) {
+  const v = Number(prompt("Quantidade da saída:"));
+  if(v > 0) db.ref('produtos/' + id).update({ saidas: atual + v });
+}
+
+function addProduto() {
+    const n = document.getElementById('nomeProd').value;
+    const q = Number(document.getElementById('qtdProd').value);
+    if(n) db.ref('produtos').push({ tipo: abaAtualLoja, loja: usuarioAtual.loja, nome: n, inicial: q, saidas: 0 });
+}
+
+function addProdutoAdmin(){
+    const l = document.getElementById('adminLojaDestino').value;
+    const t = document.getElementById('adminSetorDestino').value;
+    const n = document.getElementById('adminNomeProd').value;
+    const q = Number(document.getElementById('adminQtdProd').value);
+    if(n) db.ref('produtos').push({ tipo: t, loja: l, nome: n, inicial: q, saidas: 0 });
+}
+
+function trocarAbaAdmin(aba, el) {
+  document.querySelectorAll('#abasAdmin .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('adminArea').classList.toggle('hidden', aba !== 'visao');
+  document.getElementById('adminAdicionarArea').classList.toggle('hidden', aba !== 'adicionar');
+  document.getElementById('adminUsuariosArea').classList.toggle('hidden', aba !== 'usuarios');
+  document.getElementById('relatorioArea').classList.toggle('hidden', aba !== 'relatorio');
+}
+
+function trocarAbaLoja(t, el){ 
+    abaAtualLoja = t; 
+    document.querySelectorAll('#lojaArea .tab').forEach(x => x.classList.remove('active')); 
+    el.classList.add('active'); 
+    renderLoja(); 
+}
+
+function exportarCSV() {
+    db.ref('produtos').once('value', snap => {
+        let csv = "Loja;Setor;Produto;Inicial;Saidas;Final\n";
+        snap.forEach(d => {
+            const p = d.val();
+            csv += `${p.loja};${p.tipo};${p.nome};${p.inicial};${p.saidas};${p.inicial-p.saidas}\n`;
+        });
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "estoque_ortobom.csv";
+        link.click();
+    });
+}
+
+function importarDadosPrime() {
+    const lista = [{n: "Dream 12 Flock Amarelo", q: 12}, {n: "Royal Pillow", q: 7}, {n: "Seis Estralas", q: 11}];
+    lista.forEach(item => db.ref('produtos').push({ tipo: 'estoque', loja: 'Prime', nome: item.n, inicial: item.q, saidas: 0 }));
+    alert("Dados Inseridos!");
+}
+
+function limparSistema() { if(confirm("⚠️ Isso apagará TODO o estoque. Confirmar?")) db.ref('produtos').remove(); }
+</script>
+</body>
+</html>
